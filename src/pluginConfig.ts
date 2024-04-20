@@ -1,16 +1,17 @@
 import type { ExternalPluginConfig } from '@windy/interfaces';
 
 const config: ExternalPluginConfig = {
-    name: 'windy-plugin-my-plugin',
+    name: 'windy-plugin-contrails',
     version: '0.1.0',
-    icon: '🔌',
-    title: 'This is my first plugin',
-    description: 'This is my first plugin.',
-    author: 'John Doe (optional company name)',
-    repository: 'https://github.com/windycom/windy-plugin-template',
+    icon: '🛫',
+    title: 'Contrail finder',
+    description: 'This app helps the user discover the right conditions for contrail formation',
+    author: 'Ioana Logafatu',
+    repository: 'https://github.com/IoanaLogafatu/windy-plugin-contrails',
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
-    routerPath: '/my-plugin',
+    routerPath: '/contrails',
+    listenToSingleclick: true,
 };
 
 export default config;
