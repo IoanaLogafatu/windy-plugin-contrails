@@ -12,6 +12,7 @@ const config: ExternalPluginConfig = {
     mobileUI: 'fullscreen',
     routerPath: '/contrails',
     listenToSingleclick: true,
+    private: true
 };
 
 export default config;
