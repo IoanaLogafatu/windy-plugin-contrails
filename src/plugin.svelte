@@ -10,30 +10,26 @@
     </div>
 
     <div class="weather-stats">
-        <div class="stat">
-            <label>Height:</label>
-            <span>{height} ft</span>
-        </div>
-        <div class="stat">
-            <label>Pressure:</label>
-            <span>{pressure} hPa</span>
-        </div>
-        <div class="stat">
-            <label>Temperature:</label>
-            <span>{temperture} °C</span>
-        </div>
-        <div class="stat">
-            <label>Dewpoint:</label>
-            <span>{dewpoint} °C</span>
-        </div>
-        <div class="stat">
-            <label>Relative Humidity:</label>
-            <span>{humidity} %</span>
-        </div>
-        <div class="ice">
-            <label>Saturation Relative to Ice:</label>
-            <span>{ice} %</span>
-        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Height</th>
+                    <th>Temperature</th>
+                    <th>Relative Humidity</th>
+                    <th>Saturation Relative to Ice</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each flightLevels as { height, humidity, ice, temperature }}
+                    <tr>
+                        <td>{height}&nbsp;ft</td>
+                        <td>{temperature}&nbsp;C</td>
+                        <td>{humidity}&nbsp;%</td>
+                        <td>{ice}&nbsp;%</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
     </div>
 </section>
 
@@ -43,16 +39,16 @@
     import config from './pluginConfig';
     import { singleclick } from '@windy/singleclick';
     import windyFetch from '@windy/fetch';
-    import { humidityLookupTable } from './humidityLookup'; // Adjust the path as necessary based on your project structure
+    import { humidityLookupTable } from './humidityLookup';
+    import { Sounding } from './sounding.interface';
+    import {
+        MeteogramDataPayload,
+        MeteogramDataHash,
+    } from '@windycom/plugin-devtools/types/interfaces';
 
     const { title } = config;
 
-    let temperture = '';
-    let dewpoint = '';
-    let humidity = '';
-    let ice = '';
-    let height = '';
-    let pressure = '';
+    let flightLevels: Sounding[] = [];
 
     export const onopen = (_params: any) => {
         // Your plugin was opened with parameters parsed from URL
@@ -73,7 +69,7 @@
         singleclick.on('windy-plugin-contrails', async ev => {
             try {
                 const weatherData = await fetchData(ev.lat, ev.lon);
-                updateWeatherStats(weatherData);
+                updateWeatherStats(weatherData.data);
             } catch (error) {
                 console.error('* * * An error occurred:', error);
             }
@@ -108,22 +104,49 @@
      * formats humidity and calculates the average relative humidity with respect to ice using the current temperature.
      * It also converts height from meters to feet. The function assumes that all data is related to the 300hPa pressure level.
      *
-     * @param {any} weatherData - The raw weather data object retrieved from the weather API.
+     * @param any weatherData - The raw weather data object retrieved from the weather API.
      *                           Expected to contain temperature, dewpoint, relative humidity,
      *                           and geopotential height data at 300hPa.
      */
-    const updateWeatherStats = (weatherData: any) => {
-        /**
-         * For the moment, I am only looking at 300hPa layer
-         */
-        console.log('* * * AIR data:', weatherData);  // Displaying in log for interest only
-        temperture = (weatherData.data.data['temp-300h'][0] - 273.15).toFixed(0); // Covert to Celsius
-        dewpoint = (weatherData.data.data['dewpoint-300h'][0] - 273.15).toFixed(0); // Should really to be user preference
-        humidity = weatherData.data.data['rh-300h'][0].toFixed(0);
-        ice = getAverageRHw(+temperture);
-        const heightInMeters = weatherData.data.data['gh-300h'][0];
-        height = (heightInMeters * 3.28084).toFixed(0);
-        pressure = '300';
+    const updateWeatherStats = (weatherData: MeteogramDataPayload) => {
+        flightLevels = []; // Array to store data for each layer
+
+        // Loop over all properties in weatherData.data.data
+        for (const key in weatherData.data) {
+            if (key.startsWith('gh-')) {
+                const suffix = key.split('gh-')[1]; // Get the suffix to match other data
+                const tempKey = `temp-${suffix}`;
+                const dewpointKey = `dewpoint-${suffix}`;
+                const humidityKey = `rh-${suffix}`;
+
+                const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][0];
+                const height = +(heightInMeters * 3.28084).toFixed(0); // Convert to feet
+                const temperature = +(
+                    weatherData.data[tempKey as keyof MeteogramDataHash][0] - 273.15
+                ).toFixed(0); // Convert Kelvin to Celsius
+                const dewpoint = +(
+                    weatherData.data[dewpointKey as keyof MeteogramDataHash][0] - 273.15
+                ).toFixed(0);
+                const humidity =
+                    +weatherData.data[humidityKey as keyof MeteogramDataHash][0].toFixed(0);
+                const ice = +getAverageRHw(+temperature); // Assuming getAverageRHw function exists and works with temperature
+
+                if (ice > 0) {
+                    flightLevels.push({
+                        suffix,
+                        height,
+                        temperature,
+                        dewpoint,
+                        humidity,
+                        ice,
+                    });
+                }
+            }
+        }
+        // Sorting the array by height in descending order
+        flightLevels.sort((a, b) => b.height - a.height);
+
+        console.log('* * * Processed Layers Data:', flightLevels);
     };
 
     /**
@@ -135,7 +158,7 @@
      * @returns {string} The average relative humidity as a string, formatted to one decimal place.
      * If the bounding temperatures are not found in the lookup table, returns a specific error message.
      */
-    function getAverageRHw(temp: number): string {
+    function getAverageRHw(temp: number): number {
         // Find the bounding temperatures for the lookup
         const lowerBoundTemp = Math.floor(temp / 2) * 2;
         const upperBoundTemp = lowerBoundTemp + 2;
@@ -152,10 +175,10 @@
             // Calculate the average of the two bounding values
             const averageRHw =
                 (humidityLookupTable[lowerBoundKey] + humidityLookupTable[upperBoundKey]) / 2;
-            return averageRHw.toFixed(1); // Format to one decimal place
+            return +averageRHw.toFixed(1); // Format to one decimal place
         } else {
             // If one or both bounds don't exist, handle accordingly
-            return 'Bounds not found in lookup table';
+            return -1;
         }
     }
 </script>
