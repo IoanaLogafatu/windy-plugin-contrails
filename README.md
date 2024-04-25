@@ -7,7 +7,7 @@ Plugin to calculate the appearance of contrails.
 # CHANGELOG
 
 -   0.1.4
-    -   Declutter table
+    -   Declutter table & colour coded
 -   0.1.3
     -   Rest of calculations stratified
 -   0.1.2
