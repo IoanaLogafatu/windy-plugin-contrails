@@ -2,7 +2,7 @@
 
 Plugin to calculate the appearance of contrails.
 
-**Documentation at: [https://docs.windy-plugins.com/](https://docs.windy-plugins.com/)**
+**Developer Documentation at: [https://docs.windy-plugins.com/](https://docs.windy-plugins.com/)**
 
 # CHANGELOG
 
