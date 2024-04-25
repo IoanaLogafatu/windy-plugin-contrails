@@ -13,23 +13,32 @@
         <table>
             <thead>
                 <tr>
-                    <th>Pressure<br />Height</th>
-                    <th>Dew<br />Temp</th>
-                    <th>RHw<br />RHi</th>
-                    <th>Apple<br />Range</th>
-                    <th>i100%<br />Apple</th>
+                    <th>Height</th>
+                    <th>Temp</th>
+                    <th>RHw</th>
+                    <th>RHi</th>
                     <th>Pers</th>
                 </tr>
             </thead>
             <tbody>
-                {#each flightLevels as { height, humidityWater, temperature, humidityIce, dewpoint, ice100, pressure, appleman0, appleman100, applemanTemp, persistent }}
-                    <tr>
-                        <td>{pressure}&nbsp;hPa<br />{height}&nbsp;ft</td>
-                        <td>{dewpoint}&nbsp;C<br />{temperature}&nbsp;C</td>
-                        <td>{humidityWater}&nbsp;%<br />{humidityIce}&nbsp;%</td>
-                        <td>{appleman0}&nbsp;C<br />{appleman100}&nbsp;C</td>
-                        <td>{ice100}&nbsp;%<br />{applemanTemp}&nbsp;C</td>
-                        <td>{persistent}&nbsp;C</td>
+                {#each flightLevels as { height, temperature, humidityWater, humidityIce, appleman0, appleman100, applemanTemp, persistent }}
+                    <tr
+                        class:green-text={temperature < appleman0}
+                        class:blue-text={temperature >= appleman0 &&
+                            temperature < appleman100 &&
+                            temperature <= applemanTemp}
+                        class:yellow-text={temperature >= appleman0 &&
+                            temperature < appleman100 &&
+                            temperature > applemanTemp}
+                        class:red-text={temperature >= appleman100}
+                    >
+                        <td>{height}&nbsp;ft</td>
+                        <td>{temperature}&nbsp;C</td>
+                        <td>{humidityWater}&nbsp;%</td>
+                        <td>{humidityIce}&nbsp;%</td>
+                        <td>
+                            {humidityIce >= 100 && temperature <= persistent ? '✓' : ' '}
+                          </td>
                     </tr>
                 {/each}
             </tbody>
@@ -216,7 +225,6 @@
             endHeight = 20000;
         }
 
-        console.log(startHeight, endHeight);
         for (let height = startHeight; height >= endHeight; height -= step) {
             // Find the nearest data points around the current height
             const upperBoundIndex = data.findIndex(d => d.height <= height);
@@ -270,6 +278,11 @@
         display: flex;
         flex-direction: column;
         padding: 10px;
+        background-color: ivory;
+        th {
+            color: black; /* Sets the text color of headers to black */
+            background-color: #f0f0f0; /* Optional: sets a light gray background for better contrast */
+        }
         label {
             font-weight: bold;
         }
@@ -278,13 +291,18 @@
         }
         table {
             width: 100%; // Ensures the table takes the full width of its container
-            tr {
-                th,
-                td {
-                    padding-top: 10px; // Adds padding to the top of each cell
-                    padding-bottom: 10px; // Adds padding to the bottom of each cell
-                }
-            }
+        }
+        .green-text {
+            color: green;
+        } /* Dark green */
+        .yellow-text {
+            color: #daa520;
+        }
+        .red-text {
+            color: red;
+        } /* Firebrick red */
+        .blue-text {
+            color: blue;
         }
     }
 </style>
