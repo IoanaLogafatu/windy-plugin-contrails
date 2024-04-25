@@ -17,7 +17,7 @@
                     <th>Dew<br />Temp</th>
                     <th>RHw<br />RHi</th>
                     <th>Apple<br />Range</th>
-                    <th>i100%<br/>Apple</th>
+                    <th>i100%<br />Apple</th>
                     <th>Pers</th>
                 </tr>
             </thead>
@@ -43,21 +43,18 @@
     import config from './pluginConfig';
     import { singleclick } from '@windy/singleclick';
     import windyFetch from '@windy/fetch';
-    import { humidityLookupTable } from './humidityLookup';
+    import { HumidityWaterIce100Lookup } from './tables/HumidtyWaterIce100Lookup';
     import { Sounding } from './sounding.interface';
     import {
         MeteogramDataPayload,
         MeteogramDataHash,
     } from '@windycom/plugin-devtools/types/interfaces';
-    import { applemanData } from './ApplemanLookup';
-    import { persistentMaximum } from './PersistentMaximum';
-
+    import { Utility } from './classes/Utility.class';
+    import { Appleman } from './classes/Appleman.class';
     const { title } = config;
 
     let rawdata: Sounding[] = [];
     let flightLevels: Sounding[] = [];
-    const ApplemanHumidityLevels = [0, 30, 60, 90, 100]; // Corresponding indices 0-4
-
 
     export const onopen = (_params: any) => {
         // Your plugin was opened with parameters parsed from URL
@@ -138,24 +135,21 @@
                 const appleman0 = 0;
                 const appleman100 = 0;
                 const applemanTemp = 0;
-                const persistent =0;
+                const persistent = 0;
 
-                if (temperature < -35) {
-                    // Consider -35C is the maximum temp for any contrail.
-                    rawdata.push({
-                        pressure,
-                        height,
-                        temperature,
-                        dewpoint,
-                        humidityWater,
-                        humidityIce,
-                        ice100,
-                        appleman0,
-                        appleman100,
-                        applemanTemp,
-                        persistent
-                    });
-                }
+                rawdata.push({
+                    pressure,
+                    height,
+                    temperature,
+                    dewpoint,
+                    humidityWater,
+                    humidityIce,
+                    ice100,
+                    appleman0,
+                    appleman100,
+                    applemanTemp,
+                    persistent,
+                });
             }
         }
         // Sorting the array by height in descending order
@@ -196,12 +190,14 @@
 
         // Check if both bounds exist in the lookup table
         if (
-            humidityLookupTable[lowerBoundKey] !== undefined &&
-            humidityLookupTable[upperBoundKey] !== undefined
+            HumidityWaterIce100Lookup[lowerBoundKey] !== undefined &&
+            HumidityWaterIce100Lookup[upperBoundKey] !== undefined
         ) {
             // Calculate the average of the two bounding values
             const averageRHw =
-                (humidityLookupTable[lowerBoundKey] + humidityLookupTable[upperBoundKey]) / 2;
+                (HumidityWaterIce100Lookup[lowerBoundKey] +
+                    HumidityWaterIce100Lookup[upperBoundKey]) /
+                2;
             return +averageRHw.toFixed(1); // Format to one decimal place
         } else {
             // If one or both bounds don't exist, handle accordingly
@@ -213,116 +209,60 @@
         const result = [];
         // Define the range of heights for interpolation
         const startHeight = Math.floor(data[0].height / 1000) * 1000; // Highest point, rounded down to nearest 1000
-    const endHeight = Math.floor(data[data.length - 1].height / 1000) * 1000; // Lowest point, rounded down to nearest 1000
-    const step = 1000;
+        let endHeight = Math.floor(data[data.length - 1].height / 1000) * 1000; // Lowest point, rounded down to nearest 1000
+        const step = 1000;
+
+        if (endHeight < 20000) {
+            endHeight = 20000;
+        }
 
         console.log(startHeight, endHeight);
         for (let height = startHeight; height >= endHeight; height -= step) {
-        // Find the nearest data points around the current height
-        const upperBoundIndex = data.findIndex(d => d.height <= height);
-        if (upperBoundIndex === -1) {
-            // All points are above the height; unlikely, given the logic
-            result.push({ ...data[data.length - 1], height });
-        } else if (upperBoundIndex === 0 || data[upperBoundIndex].height === height) {
-            // The exact match or the first element matches as the lowest point
-            result.push({ ...data[upperBoundIndex], height });
-        } else {
-            // Normal case, interpolate between the bounds
-            const upper = data[upperBoundIndex];
-            const lower = data[upperBoundIndex - 1];
-            result.push(interpolate(lower, upper, height));
+            // Find the nearest data points around the current height
+            const upperBoundIndex = data.findIndex(d => d.height <= height);
+            if (upperBoundIndex === -1) {
+                // All points are above the height; unlikely, given the logic
+                result.push({ ...data[data.length - 1], height });
+            } else if (upperBoundIndex === 0 || data[upperBoundIndex].height === height) {
+                // The exact match or the first element matches as the lowest point
+                result.push({ ...data[upperBoundIndex], height });
+            } else {
+                // Normal case, interpolate between the bounds
+                const upper = data[upperBoundIndex];
+                const lower = data[upperBoundIndex - 1];
+                result.push(interpolate(lower, upper, height));
+            }
         }
-    }
 
         return result;
     }
 
     function interpolate(lower: Sounding, upper: Sounding, targetHeight: number): Sounding {
-    const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
-    const pressure = linearInterpolation(upper.pressure, lower.pressure, ratio);
-    const appleman = getAppleman(pressure);
-    const humidity = linearInterpolation(upper.humidityWater, lower.humidityWater, ratio);
+        const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
+        const pressure = Utility.linearInterpolation(upper.pressure, lower.pressure, ratio);
+        const appleman = new Appleman(pressure);
+        const humidity = Utility.linearInterpolation(
+            upper.humidityWater,
+            lower.humidityWater,
+            ratio,
+        );
 
-    const interpolated: Sounding = {
-        height: targetHeight,
-        pressure: pressure,
-        temperature: linearInterpolation(upper.temperature, lower.temperature, ratio),
-        dewpoint: linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
-        humidityWater: humidity,
-        humidityIce: linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
-        ice100: linearInterpolation(upper.ice100, lower.ice100, ratio),
-        appleman0: appleman[0],
-        appleman100: appleman[4],
-        applemanTemp: getAppleTemp(appleman,humidity),
-        persistent: getPersistentCutoff(pressure)
-    };
+        const interpolated: Sounding = {
+            height: targetHeight,
+            pressure: pressure,
+            temperature: Utility.linearInterpolation(upper.temperature, lower.temperature, ratio),
+            dewpoint: Utility.linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
+            humidityWater: humidity,
+            humidityIce: Utility.linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
+            ice100: Utility.linearInterpolation(upper.ice100, lower.ice100, ratio),
+            appleman0: appleman.low,
+            appleman100: appleman.high,
+            applemanTemp: appleman.cutOffTemp(humidity),
+            persistent: appleman.persistentCutoff,
+        };
 
-    return interpolated;
-}
-
-function linearInterpolation(y1: number, y2: number, ratio: number): number {
-    return Math.round(y1 + (y2 - y1) * ratio);
-}
-
-function getAppleman(pressure: number): number[] {
-    const keys = Object.keys(applemanData).map(Number).sort((a, b) => a - b);
-    const lowerKeyIndex = keys.findIndex(key => key > pressure) - 1;
-
-    if (lowerKeyIndex === -1) { // pressure is below the lowest key
-        return applemanData[keys[0]];
-    } else if (lowerKeyIndex === keys.length - 1) { // pressure is above the highest key
-        return applemanData[keys[keys.length - 1]];
+        return interpolated;
     }
-
-    const lowerKey = keys[lowerKeyIndex];
-    const higherKey = keys[lowerKeyIndex + 1];
-    const ratio = (pressure - lowerKey) / (higherKey - lowerKey);
-
-    const lowerData = applemanData[lowerKey];
-    const higherData = applemanData[higherKey];
-    const interpolatedData = lowerData.map((value, index) =>
-    linearInterpolation(value, higherData[index], ratio)
-    );
-
-    return interpolatedData;
-}
-
-function getAppleTemp(applemanData: number[], rh: number): number {
-    if (rh <= 0) return applemanData[0];
-    if (rh >= 100) return applemanData[4];
-
-    // Find the indices for the closest humidity levels
-    const upperIndex = ApplemanHumidityLevels.findIndex(level => level >= rh);
-    const lowerIndex = upperIndex - 1;
-
-    // Calculate interpolation ratio
-    const lowerRH = ApplemanHumidityLevels[lowerIndex];
-    const upperRH = ApplemanHumidityLevels[upperIndex];
-    const ratio = (rh - lowerRH) / (upperRH - lowerRH);
-
-    // Interpolate between the corresponding data points
-    const interpolatedValue = linearInterpolation(applemanData[lowerIndex], applemanData[upperIndex], ratio);
-
-    return interpolatedValue;
-}
-
-function getPersistentCutoff(pressure: number): number {
-    const pressures = Object.keys(persistentMaximum).map(Number).sort((a, b) => a - b);
-    const lowerBoundIndex = pressures.findIndex(p => p >= pressure) - 1;
-
-    if (lowerBoundIndex === -1) {  // pressure is below the lowest key
-        return persistentMaximum[pressures[0]];
-    } else if (lowerBoundIndex === pressures.length - 1 || pressures[lowerBoundIndex + 1] === undefined) {  // pressure is above the highest key or matches the highest key
-        return persistentMaximum[pressures[lowerBoundIndex]];
-    }
-
-    // Interpolation between two closest pressures
-    const lowerPressure = pressures[lowerBoundIndex];
-    const upperPressure = pressures[lowerBoundIndex + 1];
-    const ratio = (pressure - lowerPressure) / (upperPressure - lowerPressure);
-    return linearInterpolation(persistentMaximum[lowerPressure], persistentMaximum[upperPressure], ratio);
-}
-
 </script>
 
 <style lang="less">

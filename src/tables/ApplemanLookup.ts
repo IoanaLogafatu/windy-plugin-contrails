@@ -5,7 +5,7 @@
  * Relative Humidities 0% 30% 60% 90% 100%
  * 
  */
-export const applemanData: { [key: string]: number[] } = {
+export const ApplemanLookup: { [key: string]: number[] } = {
     30.0: [-69.61, -68.67, -67.36, -64.93, -61.74],
     50.0: [-65.53, -64.54, -63.17, -60.64, -57.15],
     100.0: [-59.68, -58.63, -57.17, -54.47, -50.92],

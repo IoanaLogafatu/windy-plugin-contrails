@@ -2,7 +2,7 @@
  * The cutoff point for persistant contrails at various pressures
  */
 
-export const persistentMaximum: { [key: string]: number } = {
+export const PersistentMaximumLookup: { [key: string]: number } = {
     30.0: -67.64,
     50.0: -63.34,
     100.0: -57.13,

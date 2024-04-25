@@ -4,7 +4,7 @@
  * Lookup table for relative humidity with respect to ice
  * Reference: https://www.metabunk.org/threads/calculator-for-rhi-and-contrail-persistence-criteria.7196/
  */
-export const humidityLookupTable: { [key: string]: number } = {
+export const HumidityWaterIce100Lookup: { [key: string]: number } = {
     '-30': 75.0,
     '-32': 73.3,
     '-34': 71.8,
