@@ -13,19 +13,23 @@
         <table>
             <thead>
                 <tr>
-                    <th>Height</th>
-                    <th>Temperature</th>
-                    <th>Relative Humidity</th>
-                    <th>Saturation Relative to Ice</th>
+                    <th>Pressure<br />Height</th>
+                    <th>Dew<br />Temp</th>
+                    <th>RHw<br />RHi</th>
+                    <th>Apple<br />Range</th>
+                    <th>i100%<br/>Apple</th>
+                    <th>Pers</th>
                 </tr>
             </thead>
             <tbody>
-                {#each flightLevels as { height, humidity, ice, temperature }}
+                {#each flightLevels as { height, humidityWater, temperature, humidityIce, dewpoint, ice100, pressure, appleman0, appleman100, applemanTemp, persistent }}
                     <tr>
-                        <td>{height}&nbsp;ft</td>
-                        <td>{temperature}&nbsp;C</td>
-                        <td>{humidity}&nbsp;%</td>
-                        <td>{ice}&nbsp;%</td>
+                        <td>{pressure}&nbsp;hPa<br />{height}&nbsp;ft</td>
+                        <td>{dewpoint}&nbsp;C<br />{temperature}&nbsp;C</td>
+                        <td>{humidityWater}&nbsp;%<br />{humidityIce}&nbsp;%</td>
+                        <td>{appleman0}&nbsp;C<br />{appleman100}&nbsp;C</td>
+                        <td>{ice100}&nbsp;%<br />{applemanTemp}&nbsp;C</td>
+                        <td>{persistent}&nbsp;C</td>
                     </tr>
                 {/each}
             </tbody>
@@ -45,10 +49,15 @@
         MeteogramDataPayload,
         MeteogramDataHash,
     } from '@windycom/plugin-devtools/types/interfaces';
+    import { applemanData } from './ApplemanLookup';
+    import { persistentMaximum } from './PersistentMaximum';
 
     const { title } = config;
 
+    let rawdata: Sounding[] = [];
     let flightLevels: Sounding[] = [];
+    const ApplemanHumidityLevels = [0, 30, 60, 90, 100]; // Corresponding indices 0-4
+
 
     export const onopen = (_params: any) => {
         // Your plugin was opened with parameters parsed from URL
@@ -91,25 +100,19 @@
      * @returns {Promise<any>} A promise that resolves with the forecast data retrieved from the Windy API.
      */
     const fetchData = (lat: number, lon: number) => {
-        return windyFetch.getMeteogramForecastData('ukv', {
-            lat: lat,
-            lon: lon,
-            step: 3,
-        });
+        return windyFetch.getMeteogramForecastData('ukv', { lat, lon });
     };
 
     /**
-     * Updates the weather statistics by processing the data retrieved for the 300hPa atmospheric layer.
+     * Updates the weather statistics by processing the data retrieved
      * This function parses and converts meteorological data from Kelvin to Celsius for temperature and dewpoint,
      * formats humidity and calculates the average relative humidity with respect to ice using the current temperature.
-     * It also converts height from meters to feet. The function assumes that all data is related to the 300hPa pressure level.
+     * It also converts height from metres to feet.
      *
      * @param any weatherData - The raw weather data object retrieved from the weather API.
-     *                           Expected to contain temperature, dewpoint, relative humidity,
-     *                           and geopotential height data at 300hPa.
      */
     const updateWeatherStats = (weatherData: MeteogramDataPayload) => {
-        flightLevels = []; // Array to store data for each layer
+        rawdata = []; // Array to store data for each layer
 
         // Loop over all properties in weatherData.data.data
         for (const key in weatherData.data) {
@@ -119,6 +122,7 @@
                 const dewpointKey = `dewpoint-${suffix}`;
                 const humidityKey = `rh-${suffix}`;
 
+                const pressure = +suffix.slice(0, -1);
                 const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][0];
                 const height = +(heightInMeters * 3.28084).toFixed(0); // Convert to feet
                 const temperature = +(
@@ -127,32 +131,55 @@
                 const dewpoint = +(
                     weatherData.data[dewpointKey as keyof MeteogramDataHash][0] - 273.15
                 ).toFixed(0);
-                const humidity =
+                const humidityWater =
                     +weatherData.data[humidityKey as keyof MeteogramDataHash][0].toFixed(0);
-                const ice = +getAverageRHw(+temperature); // Assuming getAverageRHw function exists and works with temperature
+                const humidityIce = getRHi(humidityWater, temperature);
+                const ice100 = getAverageRHw(temperature);
+                const appleman0 = 0;
+                const appleman100 = 0;
+                const applemanTemp = 0;
+                const persistent =0;
 
-                if (ice > 0) {
-                    flightLevels.push({
-                        suffix,
+                if (temperature < -35) {
+                    // Consider -35C is the maximum temp for any contrail.
+                    rawdata.push({
+                        pressure,
                         height,
                         temperature,
                         dewpoint,
-                        humidity,
-                        ice,
+                        humidityWater,
+                        humidityIce,
+                        ice100,
+                        appleman0,
+                        appleman100,
+                        applemanTemp,
+                        persistent
                     });
                 }
             }
         }
         // Sorting the array by height in descending order
-        flightLevels.sort((a, b) => b.height - a.height);
+        rawdata.sort((a, b) => b.height - a.height);
 
-        console.log('* * * Processed Layers Data:', flightLevels);
+        console.log('Processed Layers Data:', rawdata);
+        flightLevels = stratify(rawdata);
+        console.log('Stratified Data:', flightLevels);
     };
 
     /**
-     * Calculates the average relative humidity with respect to ice between two bounding temperatures.
-     * This function retrieves the relative humidity values for the lower and upper bounding temperatures
-     * from a predefined lookup table and returns their average.
+     * Rough calculation (~1%) of the RHi at a given temperature
+     * @param RHw
+     * @param temperature
+     */
+    function getRHi(RHw: number, temperature: number): number {
+        const RHi = RHw * (0.89 - 0.0148 * temperature);
+        return Math.round(RHi);
+    }
+
+    /**
+     * Lookup up the RHw required for 100% RHi at a given temperature
+     * This function is based on a chart with an increment of 2C
+     * If the required value is between 2 points, an average is taken
      *
      * @param {number} temp - The temperature for which the average relative humidity needs to be calculated.
      * @returns {string} The average relative humidity as a string, formatted to one decimal place.
@@ -181,6 +208,121 @@
             return -1;
         }
     }
+
+    function stratify(data: Sounding[]) {
+        const result = [];
+        // Define the range of heights for interpolation
+        const startHeight = Math.floor(data[0].height / 1000) * 1000; // Highest point, rounded down to nearest 1000
+    const endHeight = Math.floor(data[data.length - 1].height / 1000) * 1000; // Lowest point, rounded down to nearest 1000
+    const step = 1000;
+
+        console.log(startHeight, endHeight);
+        for (let height = startHeight; height >= endHeight; height -= step) {
+        // Find the nearest data points around the current height
+        const upperBoundIndex = data.findIndex(d => d.height <= height);
+        if (upperBoundIndex === -1) {
+            // All points are above the height; unlikely, given the logic
+            result.push({ ...data[data.length - 1], height });
+        } else if (upperBoundIndex === 0 || data[upperBoundIndex].height === height) {
+            // The exact match or the first element matches as the lowest point
+            result.push({ ...data[upperBoundIndex], height });
+        } else {
+            // Normal case, interpolate between the bounds
+            const upper = data[upperBoundIndex];
+            const lower = data[upperBoundIndex - 1];
+            result.push(interpolate(lower, upper, height));
+        }
+    }
+
+        return result;
+    }
+
+    function interpolate(lower: Sounding, upper: Sounding, targetHeight: number): Sounding {
+    const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
+    const pressure = linearInterpolation(upper.pressure, lower.pressure, ratio);
+    const appleman = getAppleman(pressure);
+    const humidity = linearInterpolation(upper.humidityWater, lower.humidityWater, ratio);
+
+    const interpolated: Sounding = {
+        height: targetHeight,
+        pressure: pressure,
+        temperature: linearInterpolation(upper.temperature, lower.temperature, ratio),
+        dewpoint: linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
+        humidityWater: humidity,
+        humidityIce: linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
+        ice100: linearInterpolation(upper.ice100, lower.ice100, ratio),
+        appleman0: appleman[0],
+        appleman100: appleman[4],
+        applemanTemp: getAppleTemp(appleman,humidity),
+        persistent: getPersistentCutoff(pressure)
+    };
+
+    return interpolated;
+}
+
+function linearInterpolation(y1: number, y2: number, ratio: number): number {
+    return Math.round(y1 + (y2 - y1) * ratio);
+}
+
+function getAppleman(pressure: number): number[] {
+    const keys = Object.keys(applemanData).map(Number).sort((a, b) => a - b);
+    const lowerKeyIndex = keys.findIndex(key => key > pressure) - 1;
+
+    if (lowerKeyIndex === -1) { // pressure is below the lowest key
+        return applemanData[keys[0]];
+    } else if (lowerKeyIndex === keys.length - 1) { // pressure is above the highest key
+        return applemanData[keys[keys.length - 1]];
+    }
+
+    const lowerKey = keys[lowerKeyIndex];
+    const higherKey = keys[lowerKeyIndex + 1];
+    const ratio = (pressure - lowerKey) / (higherKey - lowerKey);
+
+    const lowerData = applemanData[lowerKey];
+    const higherData = applemanData[higherKey];
+    const interpolatedData = lowerData.map((value, index) =>
+    linearInterpolation(value, higherData[index], ratio)
+    );
+
+    return interpolatedData;
+}
+
+function getAppleTemp(applemanData: number[], rh: number): number {
+    if (rh <= 0) return applemanData[0];
+    if (rh >= 100) return applemanData[4];
+
+    // Find the indices for the closest humidity levels
+    const upperIndex = ApplemanHumidityLevels.findIndex(level => level >= rh);
+    const lowerIndex = upperIndex - 1;
+
+    // Calculate interpolation ratio
+    const lowerRH = ApplemanHumidityLevels[lowerIndex];
+    const upperRH = ApplemanHumidityLevels[upperIndex];
+    const ratio = (rh - lowerRH) / (upperRH - lowerRH);
+
+    // Interpolate between the corresponding data points
+    const interpolatedValue = linearInterpolation(applemanData[lowerIndex], applemanData[upperIndex], ratio);
+
+    return interpolatedValue;
+}
+
+function getPersistentCutoff(pressure: number): number {
+    const pressures = Object.keys(persistentMaximum).map(Number).sort((a, b) => a - b);
+    const lowerBoundIndex = pressures.findIndex(p => p >= pressure) - 1;
+
+    if (lowerBoundIndex === -1) {  // pressure is below the lowest key
+        return persistentMaximum[pressures[0]];
+    } else if (lowerBoundIndex === pressures.length - 1 || pressures[lowerBoundIndex + 1] === undefined) {  // pressure is above the highest key or matches the highest key
+        return persistentMaximum[pressures[lowerBoundIndex]];
+    }
+
+    // Interpolation between two closest pressures
+    const lowerPressure = pressures[lowerBoundIndex];
+    const upperPressure = pressures[lowerBoundIndex + 1];
+    const ratio = (pressure - lowerPressure) / (upperPressure - lowerPressure);
+    return linearInterpolation(persistentMaximum[lowerPressure], persistentMaximum[upperPressure], ratio);
+}
+
 </script>
 
 <style lang="less">
@@ -193,6 +335,16 @@
         }
         .stat {
             margin-bottom: 5px;
+        }
+        table {
+            width: 100%; // Ensures the table takes the full width of its container
+            tr {
+                th,
+                td {
+                    padding-top: 10px; // Adds padding to the top of each cell
+                    padding-bottom: 10px; // Adds padding to the bottom of each cell
+                }
+            }
         }
     }
 </style>

@@ -6,6 +6,8 @@ Plugin to calculate the appearance of contrails.
 
 # CHANGELOG
 
+-   0.1.3
+    -   Rest of calculations stratified
 -   0.1.2
     -   Version to get full range of soundings
 -   0.1.1
