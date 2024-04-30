@@ -2,7 +2,7 @@ import type { ExternalPluginConfig } from '@windy/interfaces';
 
 const config: ExternalPluginConfig = {
     name: 'windy-plugin-contrails',
-    version: '0.1.4',
+    version: '0.1.5',
     icon: '🛫',
     title: 'Contrail finder',
     description: 'This app helps the user discover the right conditions for contrail formation',

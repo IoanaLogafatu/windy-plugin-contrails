@@ -38,7 +38,7 @@
                         <td>{humidityIce}&nbsp;%</td>
                         <td>
                             {humidityIce >= 100 && temperature <= persistent ? '✓' : ' '}
-                          </td>
+                        </td>
                     </tr>
                 {/each}
             </tbody>
@@ -52,6 +52,7 @@
     import config from './pluginConfig';
     import { singleclick } from '@windy/singleclick';
     import windyFetch from '@windy/fetch';
+    import store from '@windy/store';
     import { HumidityWaterIce100Lookup } from './tables/HumidtyWaterIce100Lookup';
     import { Sounding } from './sounding.interface';
     import {
@@ -83,7 +84,8 @@
     onMount(() => {
         singleclick.on('windy-plugin-contrails', async ev => {
             try {
-                const weatherData = await fetchData(ev.lat, ev.lon);
+                const product = await store.get('product'); // Retrieve product asynchronously
+                const weatherData = await fetchData(ev.lat, ev.lon, product); // Pass the product to fetchData
                 updateWeatherStats(weatherData.data);
             } catch (error) {
                 console.error('* * * An error occurred:', error);
@@ -97,16 +99,15 @@
 
     /**
      * Fetches meteorological data for a specific geographic location using the Windy API.
-     * This function queries the API for meteorogram forecast data based on latitude and longitude,
-     * specifically focusing on data projections at intervals defined by 'step'.
-     * The 'ukv' model is used for the forecast data retrieval, which is a model used within the UK.
+     * This function queries the API for meteorogram forecast data based on latitude and longitude
      *
      * @param {number} lat - The latitude coordinate for the location of interest.
      * @param {number} lon - The longitude coordinate for the location of interest.
+     * @param {sting} product - The weather model the user is currently using.
      * @returns {Promise<any>} A promise that resolves with the forecast data retrieved from the Windy API.
      */
-    const fetchData = (lat: number, lon: number) => {
-        return windyFetch.getMeteogramForecastData('ukv', { lat, lon });
+    const fetchData = (lat: number, lon: number, product: string) => {
+        return windyFetch.getMeteogramForecastData(product, { lat, lon }); // Use the product passed to the function
     };
 
     /**

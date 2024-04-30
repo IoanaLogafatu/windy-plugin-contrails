@@ -7,6 +7,8 @@ Plugin to calculate the appearance of contrails.
 # CHANGELOG
 
 -   0.1.4
+    -   Use default weather model - Not just Met Office
+-   0.1.4
     -   Declutter table & colour coded
 -   0.1.3
     -   Rest of calculations stratified
