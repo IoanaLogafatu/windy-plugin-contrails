@@ -9,8 +9,23 @@
         {title}
     </div>
 
-
     <h4>{clickLocation}</h4>
+    <div class="weather-stats">
+        <table>
+            <tbody>
+                {#each flightLevels as { height, temperature, applemanTemp, human }}
+                    {#if temperature <= applemanTemp}
+                        <tr class="black-text">
+                            <td>{height}&nbsp;ft</td>
+                            <td>{human}</td>
+                        </tr>
+                    {/if}
+                {/each}
+            </tbody>
+        </table>
+    </div>
+
+    <hr />
     <div class="weather-stats">
         <table>
             <thead>
@@ -68,7 +83,7 @@
 
     let rawdata: Sounding[] = [];
     let flightLevels: Sounding[] = [];
-    let clickLocation = 'HELLO';
+    let clickLocation = '';
 
     export const onopen = (_params: any) => {
         // Your plugin was opened with parameters parsed from URL
@@ -89,7 +104,7 @@
         singleclick.on('windy-plugin-contrails', async ev => {
             try {
                 const product = await store.get('product'); // Retrieve product asynchronously
-                const locationObject= await reverseName.get({lat:ev.lat, lon:ev.lon});
+                const locationObject = await reverseName.get({ lat: ev.lat, lon: ev.lon });
                 clickLocation = Utility.locationDetails(locationObject);
                 const weatherData = await fetchData(ev.lat, ev.lon, product); // Pass the product to fetchData
                 updateWeatherStats(weatherData.data);
@@ -115,8 +130,6 @@
     const fetchData = (lat: number, lon: number, product: string) => {
         return windyFetch.getMeteogramForecastData(product, { lat, lon }); // Use the product passed to the function
     };
-
-    
 
     /**
      * Updates the weather statistics by processing the data retrieved
@@ -154,6 +167,7 @@
                 const appleman100 = 0;
                 const applemanTemp = 0;
                 const persistent = 0;
+                const human = '';
 
                 rawdata.push({
                     pressure,
@@ -167,6 +181,7 @@
                     appleman100,
                     applemanTemp,
                     persistent,
+                    human,
                 });
             }
         }
@@ -258,24 +273,41 @@
         const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
         const pressure = Utility.linearInterpolation(upper.pressure, lower.pressure, ratio);
         const appleman = new Appleman(pressure);
-        const humidity = Utility.linearInterpolation(
+        const humidityWater = Utility.linearInterpolation(
             upper.humidityWater,
             lower.humidityWater,
+            ratio,
+        );
+        const applemanCutoff = appleman.cutOffTemp(humidityWater);
+        const humidityIce = Utility.linearInterpolation(
+            upper.humidityIce,
+            lower.humidityIce,
+            ratio,
+        );
+        const temperature = Utility.linearInterpolation(
+            upper.temperature,
+            lower.temperature,
             ratio,
         );
 
         const interpolated: Sounding = {
             height: targetHeight,
             pressure: pressure,
-            temperature: Utility.linearInterpolation(upper.temperature, lower.temperature, ratio),
+            temperature: temperature,
             dewpoint: Utility.linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
-            humidityWater: humidity,
+            humidityWater: humidityWater,
             humidityIce: Utility.linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
             ice100: Utility.linearInterpolation(upper.ice100, lower.ice100, ratio),
             appleman0: appleman.low,
             appleman100: appleman.high,
-            applemanTemp: appleman.cutOffTemp(humidity),
+            applemanTemp: applemanCutoff,
             persistent: appleman.persistentCutoff,
+            human: Utility.prediction(
+                temperature,
+                applemanCutoff,
+                appleman.persistentCutoff,
+                humidityIce,
+            ),
         };
 
         return interpolated;
@@ -312,6 +344,9 @@
         } /* Firebrick red */
         .blue-text {
             color: blue;
+        }
+        .black-text {
+            color: black;
         }
     }
 </style>

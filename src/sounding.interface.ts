@@ -9,5 +9,6 @@ export interface Sounding {
     appleman0: number,
     appleman100: number,
     applemanTemp: number,
-    persistent: number
+    persistent: number,
+    human: string
 }
