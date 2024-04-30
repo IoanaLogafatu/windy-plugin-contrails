@@ -9,6 +9,8 @@
         {title}
     </div>
 
+
+    <h4>{clickLocation}</h4>
     <div class="weather-stats">
         <table>
             <thead>
@@ -53,6 +55,7 @@
     import { singleclick } from '@windy/singleclick';
     import windyFetch from '@windy/fetch';
     import store from '@windy/store';
+    import reverseName from '@windy/reverseName';
     import { HumidityWaterIce100Lookup } from './tables/HumidtyWaterIce100Lookup';
     import { Sounding } from './sounding.interface';
     import {
@@ -65,6 +68,7 @@
 
     let rawdata: Sounding[] = [];
     let flightLevels: Sounding[] = [];
+    let clickLocation = 'HELLO';
 
     export const onopen = (_params: any) => {
         // Your plugin was opened with parameters parsed from URL
@@ -85,6 +89,8 @@
         singleclick.on('windy-plugin-contrails', async ev => {
             try {
                 const product = await store.get('product'); // Retrieve product asynchronously
+                const locationObject= await reverseName.get({lat:ev.lat, lon:ev.lon});
+                clickLocation = Utility.locationDetails(locationObject);
                 const weatherData = await fetchData(ev.lat, ev.lon, product); // Pass the product to fetchData
                 updateWeatherStats(weatherData.data);
             } catch (error) {
@@ -109,6 +115,8 @@
     const fetchData = (lat: number, lon: number, product: string) => {
         return windyFetch.getMeteogramForecastData(product, { lat, lon }); // Use the product passed to the function
     };
+
+    
 
     /**
      * Updates the weather statistics by processing the data retrieved
