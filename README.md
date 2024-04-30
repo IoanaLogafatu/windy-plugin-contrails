@@ -30,6 +30,8 @@ and click Install Untrusted Plugin
 
 The version number will change for every release. While this is an untrusted plugin, your version will not auto update. Please check back occasional for updates.
 
+* To install an update, delet the existing plugin from Windy and load the latest version.
+
 ## Usage 
 
 Click on the Windy menu and choose Contrail finder  
