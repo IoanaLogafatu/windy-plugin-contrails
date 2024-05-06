@@ -50,6 +50,8 @@ The plugin analyses the atmospheric conditions (pressure, temperature, humdity) 
 
 # CHANGELOG
 
+-   1.0.1
+    -   Added screenshot 
 -   1.0.0
     -   Official plugin 
 -   0.1.5

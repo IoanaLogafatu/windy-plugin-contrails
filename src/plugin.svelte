@@ -26,6 +26,7 @@
     </div>
 
     <hr />
+    <h4>Detailed analysis</h4>
     <div class="weather-stats">
         <table>
             <thead>
