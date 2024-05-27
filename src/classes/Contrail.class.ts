@@ -2,7 +2,7 @@ import store from '@windy/store';
 import reverseName from '@windy/reverseName';
 import { Utility } from './Utility.class';
 import windyFetch from '@windy/fetch';
-import { Sounding } from './sounding.interface';
+import { Sounding } from './Sounding.interface';
 import { HumidityWaterIce100Lookup } from '../tables/HumidtyWaterIce100Lookup';
 import { Appleman } from '../classes/Appleman.class';
 import {

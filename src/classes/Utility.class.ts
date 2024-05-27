@@ -1,12 +1,4 @@
-interface LocationDetails {
-  country: string;
-  lang: string;
-  lat: number;
-  lon: number;
-  name: string;
-  nameValid: boolean;
-  region: string;
-}
+import { LocationDetails } from './Locationdetails.interface';
 
 export class Utility {
   static linearInterpolation(y1: number, y2: number, ratio: number): number {
@@ -36,18 +28,20 @@ export class Utility {
 
     // Check for persistent contrails first since it has specific combined conditions
     if (humidityIce >= 100 && temperature <= persistentCutoff) {
-      return "Persistent contrails";
+      return "Long, possibly persistent";
     }
 
     // Next, determine the contrail type based on humidityIce
     if (humidityIce < 30) {
-      return "Minimal contrails";
+      return "Minimal contrails may be seen";
     } else if (humidityIce >= 30 && humidityIce < 85) {
-      return "Contrails";
+      return "Short contrails possible";
     } else { // humidityIce >= 85
-      return "Long contrails";
+      return "Longer contrails possible";
     }
   }
+
+
 }
 
 
