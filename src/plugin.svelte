@@ -6,7 +6,7 @@
         class="plugin__title plugin__title--chevron-back"
         on:click={() => bcast.emit('rqstOpen', 'menu')}
     >
-        {title}
+        {title} <span style="font-size: 0.5em;">v{version}</span>
     </div>
 
     <h4>{clickLocation}</h4>
@@ -64,10 +64,20 @@
     </div>
     <hr />
     <ul class="nav-links">
-        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/wiki">User guide</a></li>
-        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/issues">Report an issue</a></li>
-        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/discussions">Ask a question or make a suggestion</a></li>
-    </ul>    
+        <li>
+            <a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/wiki">User guide</a>
+        </li>
+        <li>
+            <a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/issues"
+                >Report an issue</a
+            >
+        </li>
+        <li>
+            <a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/discussions"
+                >Ask a question or make a suggestion</a
+            >
+        </li>
+    </ul>
 </section>
 
 <script lang="ts">
@@ -81,9 +91,10 @@
     let clickLocation = '';
 
     const { title } = config;
+    const { version } = config;
     const contrail = new Contrail();
 
-    export const onopen = async (_params: { lat: any; lon: any; }) => {
+    export const onopen = async (_params: { lat: any; lon: any }) => {
         if (!_params) {
             return; // Ignore null _params and do not execute further
         }
@@ -143,31 +154,29 @@
     }
 
     .nav-links {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 5px;
-}
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+    }
 
-.nav-links li {
-    margin-bottom: 10px;
-}
+    .nav-links li {
+        margin-bottom: 10px;
+    }
 
-.nav-links li:last-child {
-    margin-bottom: 0;
-}
+    .nav-links li:last-child {
+        margin-bottom: 0;
+    }
 
-.nav-links a {
-    text-decoration: none;
-    color: #007bff;
-    font-weight: bold;
-}
+    .nav-links a {
+        text-decoration: none;
+        color: #007bff;
+        font-weight: bold;
+    }
 
-.nav-links a:hover {
-    text-decoration: underline;
-}
-
-
+    .nav-links a:hover {
+        text-decoration: underline;
+    }
 </style>
