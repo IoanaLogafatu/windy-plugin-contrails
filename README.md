@@ -3,12 +3,10 @@
 Plugin to calculate the appearance of contrails.
 
 ## Please note: 
-1. This plugin is under development. Windy will regard it as an untrusted plugin. The code however is available to view at github.
-https://github.com/IoanaLogafatu/windy-plugin-contrails
 
-2. Due to Windy security restrictions, the app is only available on the desktop versions of Windy.
+1. Due to Windy security restrictions, the plugin is only available on the desktop versions of Windy.
 
-3. The analysis relies on the accuracy of the Windy data, which is further modelled by the app to find flight levels. Some inaccuracies may be present. 
+2. The analysis relies on the accuracy of the Windy data, which is further modelled by the plugin to find flight levels. Some inaccuracies may be present. 
 
 ## Installation:
 
@@ -18,21 +16,15 @@ Click on the Windy menu
 Choose Install Windy plugin  
 ![Windy menu](./installation//installwindypluginmenu.png)  
 
-Choose Load plugin directly from URL  
-![Load from URL](./installation/loadfromurl.png)  
+Locate the contrail plugin and click  
+![Contrail plugin](./installation//contrail.png)  
 
-The final bit.  
+The icon opens up, click (Install plugin)  
 ![Install plugin](./installation/installplugin.png)  
 
-Enter the URL
-https://windy-plugins.com/8724298/windy-plugin-contrails/0.1.5/plugin.min.js  
-and click Install Untrusted Plugin
+* To install an update, delete the existing plugin from Windy and load the latest version.
 
-The version number will change for every release. While this is an untrusted plugin, your version will not auto update. Please check back occasional for updates.
-
-* To install an update, delet the existing plugin from Windy and load the latest version.
-
-## Usage 
+## Basic usage 
 
 Click on the Windy menu and choose Contrail finder  
 ![plugin menu with COntrail finder](./installation//revisedMenu.png)  
@@ -43,6 +35,12 @@ When ready, A blank analysis is seen
 Click anywhere on the map, and the tables will fill with an analysis for the area that is clicked.  
 ![Complete analysis](./installation/Output.png)  
 
+### New feature v1.1.0
+Context menu option is now available - Right click on the Windy map, and you should see "Contrail finder" on the menu.  
+ 
+### Further information
+We are updating the GitHub wiki to provide a detailed explanation of how the plugin operates and what the figures represent. The plugin includes a link for easy access.
+
 ## Notes
 
 The plugin analyses the atmospheric conditions (pressure, temperature, humdity) at the location of the click. For accuracy, follow an aircraft on a tracker and click the Windy map at the current aircrafts position. 
@@ -50,6 +48,8 @@ The plugin analyses the atmospheric conditions (pressure, temperature, humdity) 
 
 # CHANGELOG
 
+-   1.1.0
+    -   Context menu entry
 -   1.0.2
     -   Fixed author
 -   1.0.1
