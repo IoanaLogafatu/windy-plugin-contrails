@@ -100,7 +100,6 @@ export class Contrail {
             if (key.startsWith('gh-')) {
                 const suffix = key.split('gh-')[1]; // Get the suffix to match other data
                 const tempKey = `temp-${suffix}`;
-                const dewpointKey = `dewpoint-${suffix}`;
                 const humidityKey = `rh-${suffix}`;
 
                 const pressure = +suffix.slice(0, -1);
@@ -109,9 +108,6 @@ export class Contrail {
                 const temperature = +(
                     weatherData.data[tempKey as keyof MeteogramDataHash][this._forecastColumn] - 273.15
                 ).toFixed(0); // Convert Kelvin to Celsius
-                const dewpoint = +(
-                    weatherData.data[dewpointKey as keyof MeteogramDataHash][this._forecastColumn] - 273.15
-                ).toFixed(0);
                 const humidityWater =
                     +weatherData.data[humidityKey as keyof MeteogramDataHash][this._forecastColumn].toFixed(0);
                 const humidityIce = this.getRHi(humidityWater, temperature);
@@ -126,7 +122,6 @@ export class Contrail {
                     pressure,
                     height,
                     temperature,
-                    dewpoint,
                     humidityWater,
                     humidityIce,
                     appleman0,
@@ -240,9 +235,8 @@ export class Contrail {
             height: targetHeight,
             pressure: pressure,
             temperature: temperature,
-            dewpoint: Utility.linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
             humidityWater: humidityWater,
-            humidityIce: Utility.linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
+            humidityIce: humidityIce,
             appleman0: appleman.low,
             appleman100: appleman.high,
             applemanTemp: applemanCutoff,
