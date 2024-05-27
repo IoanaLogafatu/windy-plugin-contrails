@@ -9,103 +9,111 @@
         {title} <span style="font-size: 0.5em;">v{version}</span>
     </div>
 
-    <h4>{clickLocation}</h4>
-    <div class="weather-stats">
-        <table>
-            <tbody>
-                {#each flightLevels as { height, temperature, applemanTemp, human, ditto }}
-                    {#if temperature <= applemanTemp}
-                        <tr class="black-text">
-                            <td>{height}&nbsp;ft</td>
-                            <td>
-                                {#if ditto}
-                                  <span class="ditto">''</span>
-                                {:else}
-                                  {human}
-                                {/if}
-                              </td>
+    {#if !ready}
+        <h4>Click on map to generate an analysis</h4>
+    {:else}
+        <h4>{clickLocation}</h4>
+        {#if filteredFlightLevels.length === 0}
+            <h3>No contrails predicted</h3>
+        {:else}
+            <div class="weather-stats">
+                <table>
+                    <tbody>
+                        {#each filteredFlightLevels as { height, temperature, applemanTemp, human, ditto }}
+                            {#if temperature <= applemanTemp}
+                                <tr class="black-text">
+                                    <td>{height}&nbsp;ft</td>
+                                    <td>
+                                        {#if ditto}
+                                            <span class="ditto">''</span>
+                                        {:else}
+                                            {human}
+                                        {/if}
+                                    </td>
+                                </tr>
+                            {/if}
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
+        {/if}
+        <hr />
+        <h4>Detailed analysis - will contrails form?</h4>
+        <div class="weather-stats">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ft</th>
+                        <th>hPa</th>
+                        <th>°C</th>
+                        <th>RHw</th>
+                        <th colspan="3">Appleman</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each flightLevels as { height, pressure, temperature, humidityWater, appleman0, appleman100, applemanTemp }}
+                        <tr
+                            class:green-text={temperature < appleman0}
+                            class:blue-text={temperature >= appleman0 &&
+                                temperature < appleman100 &&
+                                temperature <= applemanTemp}
+                            class:yellow-text={temperature >= appleman0 &&
+                                temperature < appleman100 &&
+                                temperature > applemanTemp}
+                            class:red-text={temperature >= appleman100}
+                        >
+                            <td>{height}</td>
+                            <td>{pressure}</td>
+                            <td>{temperature}</td>
+                            <td>{humidityWater}</td>
+                            <td>{appleman0}</td>
+                            <td>{applemanTemp}</td>
+                            <td>{appleman100}</td>
                         </tr>
-                    {/if}
-                {/each}
-            </tbody>
-        </table>
-    </div>
-    <hr />
-    <h4>Detailed analysis - will contrails form?</h4>
-    <div class="weather-stats">
-        <table>
-            <thead>
-                <tr>
-                    <th>ft</th>
-                    <th>hPa</th>
-                    <th>°C</th>
-                    <th>RHw</th>
-                    <th colspan="3">Appleman</th>
-                </tr>
-            </thead>
-            <tbody>
-                {#each flightLevels as { height, pressure, temperature, humidityWater, appleman0, appleman100, applemanTemp }}
-                    <tr
-                        class:green-text={temperature < appleman0}
-                        class:blue-text={temperature >= appleman0 &&
-                            temperature < appleman100 &&
-                            temperature <= applemanTemp}
-                        class:yellow-text={temperature >= appleman0 &&
-                            temperature < appleman100 &&
-                            temperature > applemanTemp}
-                        class:red-text={temperature >= appleman100}
-                    >
-                        <td>{height}</td>
-                        <td>{pressure}</td>
-                        <td>{temperature}</td>
-                        <td>{humidityWater}</td>
-                        <td>{appleman0}</td>
-                        <td>{applemanTemp}</td>
-                        <td>{appleman100}</td>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+        <hr />
+        <h4>Detailed analysis - Contrail persistence</h4>
+        <div class="weather-stats">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ft</th>
+                        <th>°C</th>
+                        <th>RHw</th>
+                        <th>RHi</th>
+                        <th>Max °C</th>
+                        <th>&nbsp;</th>
                     </tr>
-                {/each}
-            </tbody>
-        </table>
-    </div>
-    <hr />
-    <h4>Detailed analysis - Contrail persistence</h4>
-    <div class="weather-stats">
-        <table>
-            <thead>
-                <tr>
-                    <th>ft</th>
-                    <th>°C</th>
-                    <th>RHw</th>
-                    <th>RHi</th>
-                    <th>Max °C</th>
-                    <th>&nbsp;</th>
-                </tr>
-            </thead>
-            <tbody>
-                {#each flightLevels as { height, temperature, humidityWater, humidityIce, appleman0, appleman100, applemanTemp, persistent }}
-                    <tr
-                        class:green-text={temperature < appleman0}
-                        class:blue-text={temperature >= appleman0 &&
-                            temperature < appleman100 &&
-                            temperature <= applemanTemp}
-                        class:yellow-text={temperature >= appleman0 &&
-                            temperature < appleman100 &&
-                            temperature > applemanTemp}
-                        class:red-text={temperature >= appleman100}
-                    >
-                        <td>{height}</td>
-                        <td>{temperature}</td>
-                        <td>{humidityWater}</td>
-                        <td>{humidityIce}</td>
-                        <td>{persistent}</td>
-                        <td>
-                            {humidityIce >= 100 && temperature <= persistent ? '✓' : ' '}
-                        </td>
-                    </tr>
-                {/each}
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    {#each flightLevels as { height, temperature, humidityWater, humidityIce, appleman0, appleman100, applemanTemp, persistent }}
+                        <tr
+                            class:green-text={temperature < appleman0}
+                            class:blue-text={temperature >= appleman0 &&
+                                temperature < appleman100 &&
+                                temperature <= applemanTemp}
+                            class:yellow-text={temperature >= appleman0 &&
+                                temperature < appleman100 &&
+                                temperature > applemanTemp}
+                            class:red-text={temperature >= appleman100}
+                        >
+                            <td>{height}</td>
+                            <td>{temperature}</td>
+                            <td>{humidityWater}</td>
+                            <td>{humidityIce}</td>
+                            <td>{persistent}</td>
+                            <td>
+                                {humidityIce >= 100 && temperature <= persistent ? '✓' : ' '}
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    {/if}
     <hr />
     <ul class="nav-links">
         <li>
@@ -131,8 +139,10 @@
     import { singleclick } from '@windy/singleclick';
     import { Contrail } from './classes/Contrail.class';
 
+    let ready = false;
     let flightLevels: any[] = [];
     let clickLocation = '';
+    let filteredFlightLevels: any[] = [];
 
     const { title } = config;
     const { version } = config;
@@ -144,21 +154,28 @@
         }
 
         await contrail.handleEvent(_params); // Wait for handleEvent to complete
-        clickLocation = contrail.clickLocation;
-        flightLevels = contrail.flightLevels;
+        assignAnalysis(contrail);
     };
 
     onMount(() => {
         singleclick.on('windy-plugin-contrails', async ev => {
             await contrail.handleEvent(ev); // Wait for handleEvent to complete
-            clickLocation = contrail.clickLocation;
-            flightLevels = contrail.flightLevels;
+            assignAnalysis(contrail);
         });
     });
 
     onDestroy(() => {
         // Your plugin was destroyed
     });
+
+    function assignAnalysis(contrail: Contrail) {
+        clickLocation = contrail.clickLocation;
+        flightLevels = contrail.flightLevels;
+        filteredFlightLevels = flightLevels.filter(
+            level => level.temperature <= level.applemanTemp,
+        );
+        ready = true;
+    }
 </script>
 
 <style lang="less">
