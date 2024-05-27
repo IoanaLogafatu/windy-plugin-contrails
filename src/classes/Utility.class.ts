@@ -20,7 +20,7 @@ export class Utility {
     return `${nameRegion} (${formattedLat}, ${formattedLon})`;
   }
 
-  static prediction(temperature: number, applemanCutoff: number, persistentCutoff: number, humidityIce: number): string {
+  static prediction(temperature: number, applemanCutoff: number, persistentCutoff: number, humidityIce: number, humidityWater: number): string {
     // First check if temperature is above the applemanCutoff, return an empty string if true
     if (temperature > applemanCutoff) {
       return '';

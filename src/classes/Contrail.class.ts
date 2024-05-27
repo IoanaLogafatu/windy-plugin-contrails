@@ -3,7 +3,6 @@ import reverseName from '@windy/reverseName';
 import { Utility } from './Utility.class';
 import windyFetch from '@windy/fetch';
 import { Sounding } from './Sounding.interface';
-import { HumidityWaterIce100Lookup } from '../tables/HumidtyWaterIce100Lookup';
 import { Appleman } from '../classes/Appleman.class';
 import {
     MeteogramDataPayload,
@@ -65,7 +64,7 @@ export class Contrail {
                 const dewpointKey = `dewpoint-${suffix}`;
                 const humidityKey = `rh-${suffix}`;
 
-                const pressure = +suffix.slice(0, -1); 
+                const pressure = +suffix.slice(0, -1);
                 const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][0];
                 const height = +(heightInMeters * 3.28084).toFixed(0); // Convert to feet
                 const temperature = +(
@@ -77,12 +76,12 @@ export class Contrail {
                 const humidityWater =
                     +weatherData.data[humidityKey as keyof MeteogramDataHash][0].toFixed(0);
                 const humidityIce = this.getRHi(humidityWater, temperature);
-                const ice100 = this.getRHwForRHi100(temperature);
                 const appleman0 = 0;
                 const appleman100 = 0;
                 const applemanTemp = 0;
                 const persistent = 0;
                 const human = '';
+                const ditto = false;
 
                 this._rawdata.push({
                     pressure,
@@ -91,12 +90,12 @@ export class Contrail {
                     dewpoint,
                     humidityWater,
                     humidityIce,
-                    ice100,
                     appleman0,
                     appleman100,
                     applemanTemp,
                     persistent,
                     human,
+                    ditto
                 });
             }
         }
@@ -121,41 +120,6 @@ export class Contrail {
         return Math.round(RHi);
     }
 
-    /**
-     * Determines the relative humidity for water (RHw) that would result in 100% relative humidity for ice (RHi) 
-     * at a given temperature using a lookup table.
-     * 
-     * @param {number} temp - The temperature in degrees Celsius.
-     * @returns {number} - The calculated relative humidity for water (RHw) that gives 100% RHi, formatted to one decimal place.
-     *                     Returns -1 if the temperature bounds are not found in the lookup table.
-     */
-    getRHwForRHi100(temp: number): number {
-        // Find the bounding temperatures for the lookup
-        const lowerBoundTemp = Math.floor(temp / 2) * 2;
-        const upperBoundTemp = lowerBoundTemp + 2;
-
-        // Convert bounds to string to match the lookup table keys
-        const lowerBoundKey = lowerBoundTemp.toString();
-        const upperBoundKey = upperBoundTemp.toString();
-
-        // Check if both bounds exist in the lookup table
-        if (
-            HumidityWaterIce100Lookup[lowerBoundKey] !== undefined &&
-            HumidityWaterIce100Lookup[upperBoundKey] !== undefined
-        ) {
-            // Calculate the average of the two bounding values
-            const averageRHw =
-                (HumidityWaterIce100Lookup[lowerBoundKey] +
-                    HumidityWaterIce100Lookup[upperBoundKey]) /
-                2;
-            return +averageRHw.toFixed(1); // Format to one decimal place
-        } else {
-            // If one or both bounds don't exist, handle accordingly
-            return -1;
-        }
-    }
-
-    
     stratify(data: Sounding[]) {
         const result = [];
         // Define the range of heights for interpolation
@@ -167,6 +131,7 @@ export class Contrail {
             endHeight = 20000;
         }
 
+        let previousHuman = '';
         for (let height = startHeight; height >= endHeight; height -= step) {
             // Find the nearest data points around the current height
             const upperBoundIndex = data.findIndex(d => d.height <= height);
@@ -180,7 +145,10 @@ export class Contrail {
                 // Normal case, interpolate between the bounds
                 const upper = data[upperBoundIndex];
                 const lower = data[upperBoundIndex - 1];
-                result.push(this.interpolate(lower, upper, height));
+
+                const currentLayer = this.interpolate(lower, upper, height,previousHuman);
+                previousHuman = currentLayer.human;
+                result.push(currentLayer);
             }
         }
 
@@ -195,7 +163,7 @@ export class Contrail {
      * @param {Sounding[]} data - The array of sounding data objects, each containing height and other meteorological data.
      * @returns {Sounding[]} - The array of stratified data objects, each representing an interpolated flight level.
      */
-    interpolate(lower: Sounding, upper: Sounding, targetHeight: number): Sounding {
+    interpolate(lower: Sounding, upper: Sounding, targetHeight: number, previousHuman: string): Sounding {
         const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
         const pressure = Utility.linearInterpolation(upper.pressure, lower.pressure, ratio);
         const appleman = new Appleman(pressure);
@@ -216,6 +184,19 @@ export class Contrail {
             ratio,
         );
 
+        const human =   Utility.prediction(
+            temperature,
+            applemanCutoff,
+            appleman.persistentCutoff,
+            humidityIce,
+            humidityWater
+        );
+
+        let ditto = false;
+        if (human === previousHuman && human !== '') {
+            ditto = true;
+        }
+
         const interpolated: Sounding = {
             height: targetHeight,
             pressure: pressure,
@@ -223,17 +204,12 @@ export class Contrail {
             dewpoint: Utility.linearInterpolation(upper.dewpoint, lower.dewpoint, ratio),
             humidityWater: humidityWater,
             humidityIce: Utility.linearInterpolation(upper.humidityIce, lower.humidityIce, ratio),
-            ice100: Utility.linearInterpolation(upper.ice100, lower.ice100, ratio),
             appleman0: appleman.low,
             appleman100: appleman.high,
             applemanTemp: applemanCutoff,
             persistent: appleman.persistentCutoff,
-            human: Utility.prediction(
-                temperature,
-                applemanCutoff,
-                appleman.persistentCutoff,
-                humidityIce,
-            ),
+            human: human,
+            ditto: ditto
         };
 
         return interpolated;
