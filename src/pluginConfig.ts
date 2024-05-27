@@ -2,7 +2,7 @@ import type { ExternalPluginConfig } from '@windy/interfaces';
 
 const config: ExternalPluginConfig = {
     name: 'windy-plugin-contrails',
-    version: '1.0.2',
+    version: '1.1.0',
     icon: '🛫',
     title: 'Contrail finder',
     description: 'This app helps the user discover the right conditions for contrail formation',
@@ -12,6 +12,7 @@ const config: ExternalPluginConfig = {
     mobileUI: 'fullscreen',
     routerPath: '/contrails',
     listenToSingleclick: true,
+    addToContextmenu: true,
     private: false
 };
 
