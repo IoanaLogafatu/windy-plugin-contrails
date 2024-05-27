@@ -50,6 +50,9 @@ The plugin analyses the atmospheric conditions (pressure, temperature, humdity) 
 
 -   1.1.0
     -   Context menu entry
+    -   Choose the forecast closest to the current time
+    -   Two analysis tables
+    -   Refactored contrail code out of plugin.svelte
 -   1.0.2
     -   Fixed author
 -   1.0.1
