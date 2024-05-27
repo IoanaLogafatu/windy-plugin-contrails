@@ -18,6 +18,12 @@ export class Contrail {
     private _flightLevels: Sounding[] = [];
     /** Human readable location of click */
     private _clickLocation = '';
+    /** Date of forecast */
+    private _forecastDate = 0;
+    /** Model used */
+    private _model = '';
+    /** The forecast nearest to current time */
+    private _forecastColumn = 0;
 
     /** Return the final data */
     get flightLevels() {
@@ -29,6 +35,15 @@ export class Contrail {
         return this._clickLocation;
     }
 
+    get forecastDate() {
+        const date = new Date(this._forecastDate);
+        return date.toString();
+    }
+
+    get model() {
+        return this._model;
+    }
+
     /** Handle the click event (The request for the contrail analysis) */
     async handleEvent(ev: { lat: any; lon: any; }) {
         try {
@@ -36,10 +51,34 @@ export class Contrail {
             const locationObject = await reverseName.get({ lat: ev.lat, lon: ev.lon }); // Retrieve the location data
             this._clickLocation = Utility.locationDetails(locationObject); // Convert to human readable
             const weatherData = await this.fetchData(ev.lat, ev.lon, product); // Retrieve the sounding from location
+            this.findNearestColumn(weatherData.data.data.hours);
+            this._forecastDate = weatherData.data.data.hours[this._forecastColumn];
+            this._model = weatherData.data.header.model;
             this.updateWeatherStats(weatherData.data); // Interpret the data
         } catch (error) {
             console.error('* * * An error occurred:', error);
         }
+    }
+
+  private  findNearestColumn(epoch: number[]) {
+
+        // Get the current time in Unix epoch format
+        const currentTime = Date.now();
+        
+        let closestIndex = -1;
+        let closestDiff = Infinity;
+
+        // Iterate through the hours array to find the closest timestamp
+        for (let i = 0; i < epoch.length; i++) {
+            const diff = Math.abs(epoch[i] - currentTime);
+            if (diff < closestDiff) {
+                closestDiff = diff;
+                closestIndex = i;
+            }
+        }
+
+        // Set this._forecastColumn to the index of the closest timestamp
+        this._forecastColumn = closestIndex;
     }
 
     /** Call the Windy API for the sounding forecast */
@@ -65,16 +104,16 @@ export class Contrail {
                 const humidityKey = `rh-${suffix}`;
 
                 const pressure = +suffix.slice(0, -1);
-                const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][0];
-                const height = +(heightInMeters * 3.28084).toFixed(0); // Convert to feet
+                const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][this._forecastColumn];
+                const height = +(heightInMeters * 3.28084).toFixed(this._forecastColumn); // Convert to feet
                 const temperature = +(
-                    weatherData.data[tempKey as keyof MeteogramDataHash][0] - 273.15
+                    weatherData.data[tempKey as keyof MeteogramDataHash][this._forecastColumn] - 273.15
                 ).toFixed(0); // Convert Kelvin to Celsius
                 const dewpoint = +(
-                    weatherData.data[dewpointKey as keyof MeteogramDataHash][0] - 273.15
+                    weatherData.data[dewpointKey as keyof MeteogramDataHash][this._forecastColumn] - 273.15
                 ).toFixed(0);
                 const humidityWater =
-                    +weatherData.data[humidityKey as keyof MeteogramDataHash][0].toFixed(0);
+                    +weatherData.data[humidityKey as keyof MeteogramDataHash][this._forecastColumn].toFixed(0);
                 const humidityIce = this.getRHi(humidityWater, temperature);
                 const appleman0 = 0;
                 const appleman100 = 0;

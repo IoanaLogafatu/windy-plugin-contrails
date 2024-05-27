@@ -13,6 +13,7 @@
         <h4>Click on map to generate an analysis</h4>
     {:else}
         <h4>{clickLocation}</h4>
+        <h4>{forecastDate}</h4>
         {#if filteredFlightLevels.length === 0}
             <h3>No contrails predicted</h3>
         {:else}
@@ -143,6 +144,7 @@
     let flightLevels: any[] = [];
     let clickLocation = '';
     let filteredFlightLevels: any[] = [];
+    let forecastDate = '';
 
     const { title } = config;
     const { version } = config;
@@ -174,6 +176,7 @@
         filteredFlightLevels = flightLevels.filter(
             level => level.temperature <= level.applemanTemp,
         );
+        forecastDate = 'Forecast for ' + contrail.forecastDate + ' using model ' + contrail.model;
         ready = true;
     }
 </script>
