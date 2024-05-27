@@ -62,6 +62,12 @@
             </tbody>
         </table>
     </div>
+    <hr />
+    <ul class="nav-links">
+        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/wiki">User guide</a></li>
+        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/issues">Report an issue</a></li>
+        <li><a href="https://github.com/IoanaLogafatu/windy-plugin-contrails/discussions">Ask a question or make a suggestion</a></li>
+    </ul>    
 </section>
 
 <script lang="ts">
@@ -350,4 +356,33 @@
             color: black;
         }
     }
+
+    .nav-links {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.nav-links li {
+    margin-bottom: 10px;
+}
+
+.nav-links li:last-child {
+    margin-bottom: 0;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: bold;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+
 </style>
