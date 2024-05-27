@@ -13,35 +13,48 @@ import {
 
 export class Contrail {
 
+    /** The raw data from Windy - arranged by pressure */
     private _rawdata: Sounding[] = [];
+    /** The final interpolated data - arranged by flight levels */
     private _flightLevels: Sounding[] = [];
+    /** Human readable location of click */
     private _clickLocation = '';
 
+    /** Return the final data */
     get flightLevels() {
         return this._flightLevels;
     }
 
+    /** Return the location */
     get clickLocation() {
         return this._clickLocation;
     }
 
+    /** Handle the click event (The request for the contrail analysis) */
     async handleEvent(ev: { lat: any; lon: any; }) {
         try {
-            const product = await store.get('product'); // Retrieve product asynchronously
-            const locationObject = await reverseName.get({ lat: ev.lat, lon: ev.lon });
-            this._clickLocation = Utility.locationDetails(locationObject);
-            const weatherData = await this.fetchData(ev.lat, ev.lon, product); // Pass the product to fetchData
-            this.updateWeatherStats(weatherData.data);
+            const product = await store.get('product'); // Retrieve product (forecast model) asynchronously
+            const locationObject = await reverseName.get({ lat: ev.lat, lon: ev.lon }); // Retrieve the location data
+            this._clickLocation = Utility.locationDetails(locationObject); // Convert to human readable
+            const weatherData = await this.fetchData(ev.lat, ev.lon, product); // Retrieve the sounding from location
+            this.updateWeatherStats(weatherData.data); // Interpret the data
         } catch (error) {
             console.error('* * * An error occurred:', error);
         }
     }
 
-    fetchData(lat: any, lon: any, product: any) {
-        return windyFetch.getMeteogramForecastData(product, { lat, lon }); // Use the product passed to the function
+    /** Call the Windy API for the sounding forecast */
+    private fetchData(lat: any, lon: any, product: any) {
+        return windyFetch.getMeteogramForecastData(product, { lat, lon });
     }
 
-    updateWeatherStats = (weatherData: MeteogramDataPayload) => {
+    /**
+     * Processes the weather data retrieved from the API, calculates additional columns,
+     * and stratifies the data for further use.
+     * 
+     * @param {MeteogramDataPayload} weatherData - The weather data payload retrieved from the API.
+     */
+    private updateWeatherStats = (weatherData: MeteogramDataPayload) => {
         this._rawdata = []; // Array to store data for each layer
 
         // Loop over all properties in weatherData.data.data
@@ -52,7 +65,7 @@ export class Contrail {
                 const dewpointKey = `dewpoint-${suffix}`;
                 const humidityKey = `rh-${suffix}`;
 
-                const pressure = +suffix.slice(0, -1);
+                const pressure = +suffix.slice(0, -1); 
                 const heightInMeters = +weatherData.data[key as keyof MeteogramDataHash][0];
                 const height = +(heightInMeters * 3.28084).toFixed(0); // Convert to feet
                 const temperature = +(
@@ -64,7 +77,7 @@ export class Contrail {
                 const humidityWater =
                     +weatherData.data[humidityKey as keyof MeteogramDataHash][0].toFixed(0);
                 const humidityIce = this.getRHi(humidityWater, temperature);
-                const ice100 = this.getAverageRHw(temperature);
+                const ice100 = this.getRHwForRHi100(temperature);
                 const appleman0 = 0;
                 const appleman100 = 0;
                 const applemanTemp = 0;
@@ -95,12 +108,28 @@ export class Contrail {
         console.log('Stratified Data:', this.flightLevels);
     };
 
+    /**
+     * Calculates the relative humidity for ice (RHi) based on the relative humidity
+     * for water (RHw) and the temperature.
+     * 
+     * @param {number} RHw - The relative humidity for water.
+     * @param {number} temperature - The temperature in degrees Celsius.
+     * @returns {number} - The calculated relative humidity for ice, rounded to the nearest integer.
+     */
     getRHi(RHw: number, temperature: number): number {
         const RHi = RHw * (0.89 - 0.0148 * temperature);
         return Math.round(RHi);
     }
 
-    getAverageRHw(temp: number): number {
+    /**
+     * Determines the relative humidity for water (RHw) that would result in 100% relative humidity for ice (RHi) 
+     * at a given temperature using a lookup table.
+     * 
+     * @param {number} temp - The temperature in degrees Celsius.
+     * @returns {number} - The calculated relative humidity for water (RHw) that gives 100% RHi, formatted to one decimal place.
+     *                     Returns -1 if the temperature bounds are not found in the lookup table.
+     */
+    getRHwForRHi100(temp: number): number {
         // Find the bounding temperatures for the lookup
         const lowerBoundTemp = Math.floor(temp / 2) * 2;
         const upperBoundTemp = lowerBoundTemp + 2;
@@ -126,6 +155,7 @@ export class Contrail {
         }
     }
 
+    
     stratify(data: Sounding[]) {
         const result = [];
         // Define the range of heights for interpolation
@@ -157,6 +187,14 @@ export class Contrail {
         return result;
     }
 
+    /**
+     * Converts the raw data, sorted by pressure, into interpolated data layered by flight levels.
+     * The interpolation is done for every 1000 feet, starting from the highest point down to the lowest,
+     * but not below 20000 feet.
+     *
+     * @param {Sounding[]} data - The array of sounding data objects, each containing height and other meteorological data.
+     * @returns {Sounding[]} - The array of stratified data objects, each representing an interpolated flight level.
+     */
     interpolate(lower: Sounding, upper: Sounding, targetHeight: number): Sounding {
         const ratio = (targetHeight - upper.height) / (lower.height - upper.height);
         const pressure = Utility.linearInterpolation(upper.pressure, lower.pressure, ratio);
