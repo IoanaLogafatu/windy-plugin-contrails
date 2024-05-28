@@ -10,10 +10,18 @@ jobs:
             WINDY_API_KEY: '${{ secrets.WINDY_API_KEY }}'
         steps:
             - uses: actions/checkout@v2
+            
+            - name: Set up Node.js
+              uses: actions/setup-node@v2
+              with:
+                node-version: '16'  # Ensure this is a version that supports npm v7+
+
+            - name: Install dependencies
+              run: npm install
+
             - name: Build
-              run: |
-                  npm install
-                  npm run build
+              run: npm run build
+
             - name: Publish Plugin
               run: |
                   if [ -z "$WINDY_API_KEY" ]; then
